@@ -5,9 +5,7 @@ from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 from parser.util import _wait_random, is_state_file_exists
 
 import asyncio
-
-from dotenv import dotenv_values
-
+import os
 import json
 
 import logging
@@ -20,8 +18,6 @@ with open('parser/cfg.json', 'r', encoding='utf-8') as cfg_file:
   user_cfg = json.load(cfg_file)
   BASE_URL = user_cfg.get('CHUNITHM_NET_ENGLISH_URL_BASE', 'https://chunithm-net-eng.com/mobile')
   ERROR_URL = f'{BASE_URL}/error'
-
-env_cfg = dotenv_values()
 
 class Navigator:
   """
@@ -43,8 +39,8 @@ class Navigator:
     self.url = url
 
   def _get_username_password(self) -> Tuple[str, str]:
-    username: Optional[str] = env_cfg.get('PARSER_SEGA_ID')
-    password: Optional[str] = env_cfg.get('PARSER_SEGA_PW')
+    username: Optional[str] = os.getenv('PARSER_SEGA_ID')
+    password: Optional[str] = os.getenv('PARSER_SEGA_PW')
     if not username or not password:
       raise ValueError('SEGA ID or password not found in environment variables.')
     return username, password

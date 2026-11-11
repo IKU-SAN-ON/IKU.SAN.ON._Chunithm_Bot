@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY requirements.txt .
 
-RUN apt update && apt install -y libatomic
+RUN apt update && apt install -y libatomic1
 RUN pip install --no-cache-dir -r requirements.txt
 
 RUN playwright install --with-deps chromium

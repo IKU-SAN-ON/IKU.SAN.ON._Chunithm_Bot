@@ -3,7 +3,6 @@ import os
 
 import discord
 from discord.ext import commands
-from dotenv import load_dotenv
 
 from cogs.boost_day import add as boost_day_setup
 from cogs.team_draw import add as team_draw_setup
@@ -15,8 +14,6 @@ from utils.embed import error_embed
 
 # from data.db import db
 
-
-load_dotenv()
 token = os.getenv("DISCORD_TOKEN")
 
 handler = logging.FileHandler(filename="discord.log", encoding="utf-8", mode="w")
