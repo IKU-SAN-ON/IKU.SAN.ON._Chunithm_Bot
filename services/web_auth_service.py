@@ -1,10 +1,9 @@
 import requests
-from dotenv import dotenv_values
+import os
 
 import logging
 
-cfg = dotenv_values(".env")
-WEB_API_URL_BASE = f"{cfg.get("WEB_API_URL_BASE", "http://host.docker.internal:3000/api/v1")}"
+WEB_API_URL_BASE = os.getenv("WEB_API_URL_BASE", "http://host.docker.internal:3000/api/v1")
 
 logger = logging.getLogger(__name__)
 

@@ -3,14 +3,13 @@ from datetime import date, datetime
 
 import requests
 
-from dotenv import dotenv_values
+import os
 
 from data.models import BoostDayProposal
 
 logger = logging.getLogger(__name__)
 
-cfg = dotenv_values(".env")
-WEB_API_URL_BASE = cfg.get("WEB_API_URL_BASE", "http://host.docker.internal:3000/api/v1")
+WEB_API_URL_BASE = os.getenv("WEB_API_URL_BASE", "http://host.docker.internal:3000/api/v1")
 
 
 async def get_user_proposals(user_id: int, month_key: str) -> list[BoostDayProposal]:

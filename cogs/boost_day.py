@@ -1,10 +1,10 @@
 import logging
+import os
 from datetime import date
 
 import discord
 from discord import app_commands
 from discord.ext import commands
-from dotenv import dotenv_values
 
 from exceptions import boost_day_exceptions
 from services.boost_day_service import get_month_proposals, get_user_proposals
@@ -13,7 +13,7 @@ from utils.calendar_image_utils import generate_all_calendar, generate_self_cale
 from utils.date_utils import is_month_key_format, next_month, parse_iso_date
 from utils.embed import error_embed, info_embed
 
-WEB_URL_BASE = f"{dotenv_values('.env').get('WEB_URL_BASE', 'http://localhost:3000')}"
+WEB_URL_BASE = os.getenv("WEB_URL_BASE", "http://localhost:3000")
 
 logger = logging.getLogger("discord.bot.cogs.boost_day")
 
