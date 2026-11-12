@@ -5,6 +5,10 @@ services:
     env_file: .env
     restart: unless-stopped
     init: true
+    # The bot runs as the unprivileged `bot` user (UID/GID 1000) in the image.
+    # On Linux hosts, make sure the bind-mounted state is writable by that user:
+    #   sudo chown -R 1000:1000 ./data
+    # (or switch to a named volume).
     volumes:
       - ./data/bot.db:/app/data/bot.db
     networks:
