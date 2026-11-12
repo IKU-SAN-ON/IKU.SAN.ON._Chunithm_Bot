@@ -1,0 +1,148 @@
+name: Publish container image
+
+# Builds and publishes the bot image to GHCR when a version tag is pushed.
+# Production hosts pull that image instead of building the image themselves.
+#
+# Visibility: the image is intended to be PUBLIC. GHCR creates a package as
+# private on its first publish and does not expose a supported API for a
+# workflow to change that. Before the first run, set the organisation's
+# Settings -> Packages -> Package Creation to Public; otherwise make the
+# package public once in its settings (Danger Zone -> Change visibility ->
+# Public). Pushes afterwards keep the public visibility, public packages are
+# free, and anonymous `docker pull` works without a login.
+#
+# Tag example:
+#   git tag v0.1.0
+#   git push origin v0.1.0
+#
+# The workflow can also be triggered manually (Actions -> Publish container
+# image -> Run workflow) for testing; manual runs publish the `sha-*` tag only.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+# Avoid two builds racing for the same tag.
+concurrency:
+  group: publish-image-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ikusanon-bot
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # GHCR image names must be lowercase; organisation names are not.
+      - name: Normalise repository owner
+        id: owner
+        run: echo "value=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      # Only needed when DOCKER_PLATFORMS includes a non-native architecture.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ steps.owner.outputs.value }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=ref,event=tag
+            type=sha,format=short,prefix=sha-
+            type=raw,value=latest,enable=${{ github.event_name == 'push' && !contains(github.ref_name, '-') }}
+          labels: |
+            org.opencontainers.image.title=IKUSANON Chunithm bot
+            org.opencontainers.image.description=Discord bot for IKUSANON boost-day scheduling
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+
+      - name: Build and push image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          # Set the repository variable DOCKER_PLATFORMS to e.g.
+          # "linux/amd64,linux/arm64" if the production host is not amd64.
+          platforms: ${{ vars.DOCKER_PLATFORMS || 'linux/amd64' }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=bot
+          cache-to: type=gha,mode=max,scope=bot
+          # Supply-chain metadata attached to the image.
+          provenance: true
+          sbom: true
+
+      - name: Verify the image is publicly pullable
+        env:
+          OWNER: ${{ steps.owner.outputs.value }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          tag=${TAGS%%$'\n'*}
+          if [ -z "$tag" ]; then
+            echo "No tag was produced; skipping the anonymous access check."
+            exit 0
+          fi
+
+          token=$(curl -fsS "https://ghcr.io/token?service=ghcr.io&scope=repository:${OWNER}/${IMAGE_NAME}:pull" \
+            | jq -r '.token // empty' || true)
+          code="no-token"
+          if [ -n "$token" ]; then
+            code=$(curl -s -o /dev/null -w '%{http_code}' \
+              -H "Authorization: Bearer ${token}" \
+              -H "Accept: application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json" \
+              "https://ghcr.io/v2/${OWNER}/${IMAGE_NAME}/manifests/${tag}")
+          fi
+
+          if [ "$code" = "200" ]; then
+            echo "Anonymous pull OK: ${IMAGE_NAME}:${tag} is public."
+          else
+            echo "::warning::Anonymous pull for ${IMAGE_NAME}:${tag} returned HTTP ${code}."
+            echo "Make the package public once: https://github.com/orgs/${GITHUB_REPOSITORY_OWNER}/packages/container/${IMAGE_NAME}/settings"
+            echo "Org owners can also set Settings -> Packages -> Package Creation to Public for future packages."
+          fi
+
+      - name: Write job summary
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+        run: |
+          {
+            echo "## Published bot image"
+            echo ""
+            echo '```'
+            printf '%s\n' "$TAGS"
+            echo '```'
+            echo ""
+            printf 'Digest: `%s`\n' "$DIGEST"
+            echo ""
+            echo "Package: https://github.com/orgs/${GITHUB_REPOSITORY_OWNER}/packages/container/${IMAGE_NAME}"
+          } >> "$GITHUB_STEP_SUMMARY"
