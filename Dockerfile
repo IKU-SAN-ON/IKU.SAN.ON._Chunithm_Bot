@@ -61,7 +61,5 @@ RUN mkdir -p /app/data \
 
 USER bot
 
-# tini is PID 1 and forwards SIGTERM/SIGINT to `python bot.py`, allowing
-# discord.py to shut down cleanly on `docker stop`.
-ENTRYPOINT ["/usr/bin/tini", "--"]
+ENTRYPOINT ["/usr/bin/tini", "-s", "--"]
 CMD ["python", "bot.py"]
