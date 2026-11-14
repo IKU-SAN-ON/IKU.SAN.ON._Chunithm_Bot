@@ -2,11 +2,11 @@ import logging
 import os
 
 import discord
-from discord.ext import commands
-
 from cogs.boost_day import add as boost_day_setup
+from cogs.rating_check import add as rating_check_setup
 from cogs.team_draw import add as team_draw_setup
 from cogs.team_point import add as team_point_setup
+from discord.ext import commands
 from exceptions.boost_day_exceptions import BoostDayError
 from exceptions.team_draw_exceptions import TeamDrawError
 from exceptions.team_point_exceptions import TeamPointError
@@ -31,6 +31,7 @@ class ChunithmBot(commands.Bot):
         # Load cogs.
         await boost_day_setup(self)
         await team_point_setup(self)
+        await rating_check_setup(self)
         # await team_draw_setup(self)
 
         # Sync application (slash) commands on startup.
