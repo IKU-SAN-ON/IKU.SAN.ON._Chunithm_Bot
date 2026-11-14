@@ -5,17 +5,17 @@ from datetime import date
 import discord
 from discord import app_commands
 from discord.ext import commands
-
 from exceptions import boost_day_exceptions
 from services.boost_day_service import get_month_proposals, get_user_proposals
 from services.web_auth_service import get_token
 from utils.calendar_image_utils import generate_all_calendar, generate_self_calendar
-from utils.date_utils import is_month_key_format, next_month, parse_iso_date
+from utils.date_utils import is_month_key_format
 from utils.embed import error_embed, info_embed
 
 WEB_URL_BASE = os.getenv("WEB_URL_BASE", "http://localhost:3000")
 
 logger = logging.getLogger("discord.bot.cogs.boost_day")
+
 
 @app_commands.guild_install()
 @app_commands.guild_only()
@@ -82,7 +82,7 @@ class BoostDayCog(commands.GroupCog, name="boostday"):
     @app_commands.rename(month="月份")
     @app_commands.describe(month="欲查詢的月份，格式為 YYYY-MM，預設為本月")
     async def my_boost_proposals(
-        self, interaction: discord.Interaction, month: str = None
+        self, interaction: discord.Interaction, month: str | None = None
     ):
         await interaction.response.defer(ephemeral=True)
 
@@ -101,15 +101,15 @@ class BoostDayCog(commands.GroupCog, name="boostday"):
             await interaction.followup.send(embed=embed, ephemeral=True)
             return
 
-        year, month = map(int, month_key.split("-"))
+        year_int, month_int = map(int, month_key.split("-"))
         highlight_days = [p.target_date.day for p in proposals]
 
-        calendar_png = generate_self_calendar(year, month, set(highlight_days))
+        calendar_png = generate_self_calendar(year_int, month_int, set(highlight_days))
         calendar_file = discord.File(calendar_png, filename="calendar.png")
 
         embed = info_embed(
             title=f"你的加成日提案：{month_key}",
-            description=f"請查看以下日曆圖。\n藍色框選的日期為你已提案的日期。",
+            description="請查看以下日曆圖。\n藍色框選的日期為你已提案的日期。",
         )
         embed.set_image(url=f"attachment://{calendar_file.filename}")
 
@@ -165,7 +165,7 @@ class BoostDayAdminCog(commands.GroupCog, name="boostday-admin"):
     @app_commands.rename(month="月份")
     @app_commands.describe(month="欲查詢的月份，格式為 YYYY-MM，預設為本月")
     async def boost_proposals(
-        self, interaction: discord.Interaction, month: str = None
+        self, interaction: discord.Interaction, month: str | None = None
     ):
         month_key = await self.month_key_parser(month)
         proposals = await get_month_proposals(month_key)
@@ -184,8 +184,8 @@ class BoostDayAdminCog(commands.GroupCog, name="boostday-admin"):
                 day = p.target_date.day
                 count_of_days[day] = count_of_days.get(day, 0) + 1
 
-            year, month = map(int, month_key.split("-"))
-            calendar_png = generate_all_calendar(year, month, count_of_days)
+            year_int, month_int = map(int, month_key.split("-"))
+            calendar_png = generate_all_calendar(year_int, month_int, count_of_days)
             calendar_file = discord.File(calendar_png, filename="calendar.png")
 
             embed = info_embed(
@@ -204,6 +204,7 @@ class BoostDayAdminCog(commands.GroupCog, name="boostday-admin"):
             await interaction.response.send_message(
                 embed=embed, file=calendar_file, ephemeral=True
             )
+
 
 async def add(bot: commands.Bot):
     await bot.add_cog(BoostDayCog(bot))

@@ -1,12 +1,10 @@
-import asyncio
 import datetime
 import logging
 
 import discord
+from data.config_store import get_config_value, set_config_value
 from discord import app_commands
 from discord.ext import commands, tasks
-
-from data.config_store import get_config_value, set_config_value
 from exceptions import team_point_exceptions
 from parser.team_point import get_team_scores
 from utils.embed import error_embed, info_embed, warning_embed
@@ -55,6 +53,7 @@ def _save_state(tp_msg_channel_id: int | None, tp_msg_msg_id: int | None):
         TP_MSG_MSG_ID_KEY,
         str(tp_msg_msg_id) if tp_msg_msg_id is not None else None,
     )
+
 
 @app_commands.default_permissions(manage_roles=True)
 @app_commands.guild_install()
@@ -131,16 +130,19 @@ class TeamPointAdminCog(commands.GroupCog, name="teampoint-admin"):
         logger.info("Started updating team points...")
 
         try:
-            channel, message = await self.get_channel_message()
+            _, message = await self.get_channel_message()
+            if message is None:
+                logger.warning("Team point message not found. Skipping update.")
+                return
         except team_point_exceptions.TeamPointError as e:
             logger.warning(f"Cannot update team points due to: {e}")
             return
 
         try:
             team_scores = await get_team_scores()
-        except Exception as e:
+        except Exception:
             # Log the error, but do not raise
-            logger.error(f"Error fetching team scores: {e}")
+            logger.exception("Error fetching team scores")
             return
 
         sum_scores = sum(team_scores.values())
@@ -161,8 +163,8 @@ class TeamPointAdminCog(commands.GroupCog, name="teampoint-admin"):
             logger.error("Bot does not have permission to edit the team point message.")
         except discord.NotFound:
             logger.error("Team point message not found.")
-        except Exception as e:
-            logger.error(f"Unexpected error while updating team point message: {e}")
+        except Exception:
+            logger.exception(f"Unexpected error while updating team point message: {e}")
 
         logger.info("Team points update task completed.")
 
@@ -255,13 +257,17 @@ class TeamPointAdminCog(commands.GroupCog, name="teampoint-admin"):
             await self.bot.wait_for(
                 "interaction",
                 check=lambda i: (
-                    i.data.get("custom_id") == "confirm_overwrite_tp_msg"
-                    and i.user.id == interaction.user.id
+                    (
+                        i.data.get("custom_id") == "confirm_overwrite_tp_msg"
+                        and i.user.id == interaction.user.id
+                    )
+                    if i.data
+                    else False
                 ),
                 timeout=60.0,
             )
             return True
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return False
 
 

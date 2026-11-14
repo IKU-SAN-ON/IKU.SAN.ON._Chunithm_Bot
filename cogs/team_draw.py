@@ -1,21 +1,17 @@
-import asyncio
 import datetime
 import logging
 import random
 import re
 
 import discord
+from data.config_store import get_config_value, set_config_value
 from discord import app_commands
 from discord.ext import commands, tasks
-
-from data.config_store import get_config_value, set_config_value
 from exceptions import team_draw_exceptions
 from parser.team_course import get_team_course_scores
-from utils.embed import error_embed, info_embed, warning_embed
+from utils.embed import error_embed, info_embed
 
 logger = logging.getLogger("discord.bot.cogs.team_draw")
-
-from typing import Optional
 
 TD_DRAW_DATETIME_KEY = "team_draw.td_draw_datetime"
 TD_DRAW_CHANNEL_ID_KEY = "team_draw.td_draw_channel_id"
@@ -29,7 +25,7 @@ class TeamDrawState:
     def __init__(self):
         initial_state = self._load_state()
         datetime_string = initial_state.get("td_draw_datetime", None)
-        self._td_draw_datetime: Optional[datetime.datetime] = None
+        self._td_draw_datetime: datetime.datetime | None = None
         if datetime_string:
             try:
                 self._td_draw_datetime = datetime.datetime.fromisoformat(
@@ -45,37 +41,37 @@ class TeamDrawState:
         ):
             self._td_draw_datetime = None
 
-        self._td_draw_channel_id: Optional[int] = initial_state.get(
+        self._td_draw_channel_id: int | None = initial_state.get(
             "td_draw_channel_id", None
         )
 
     @property
-    def td_draw_datetime(self) -> Optional[datetime.datetime]:
+    def td_draw_datetime(self) -> datetime.datetime | None:
         """
         Returns the scheduled draw datetime, or None if not set.
         """
         return self._td_draw_datetime
 
     @td_draw_datetime.setter
-    def td_draw_datetime(self, value: Optional[datetime.datetime]):
+    def td_draw_datetime(self, value: datetime.datetime | None):
         self._td_draw_datetime = value
         self._save_state()
 
     @td_draw_datetime.getter
-    def td_draw_datetime(self) -> Optional[datetime.datetime]:
+    def td_draw_datetime(self) -> datetime.datetime | None:
         return self._td_draw_datetime
 
     @property
-    def td_draw_channel_id(self) -> Optional[int]:
+    def td_draw_channel_id(self) -> int | None:
         return self._td_draw_channel_id
 
     @td_draw_channel_id.setter
-    def td_draw_channel_id(self, value: Optional[int]):
+    def td_draw_channel_id(self, value: int | None):
         self._td_draw_channel_id = value
         self._save_state()
 
     @td_draw_channel_id.getter
-    def td_draw_channel_id(self) -> Optional[int]:
+    def td_draw_channel_id(self) -> int | None:
         return self._td_draw_channel_id
 
     def _load_state(self):
@@ -105,6 +101,7 @@ class TeamDrawState:
             if self._td_draw_channel_id is not None
             else None,
         )
+
 
 @app_commands.default_permissions(manage_roles=True)
 @app_commands.guild_install()
@@ -188,8 +185,8 @@ class TeamDrawAdminCog(commands.GroupCog, name="teamdraw-admin"):
             await channel.send(embed=embed)  # type:ignore
 
             logger.info("Team draw completed successfully.")
-        except Exception as e:
-            logger.error(f"Error during team draw: {e}")
+        except Exception:
+            logger.exception("Error during team draw")
 
         self.state.td_draw_datetime = None
 
@@ -230,7 +227,7 @@ class TeamDrawAdminCog(commands.GroupCog, name="teamdraw-admin"):
     ):
         try:
             msg = await channel.send("這是一則測試訊息，用以確認頻道有效性。")
-        except Exception:
+        except (discord.Forbidden, discord.NotFound, discord.HTTPException):
             raise team_draw_exceptions.InvalidChannelException()
 
         await msg.delete()
