@@ -8,7 +8,7 @@ from cogs.song_sync import add as song_sync_setup
 from cogs.team_draw import add as team_draw_setup
 from cogs.team_point import add as team_point_setup
 from discord.ext import commands
-from exception.rating_check_exceptions import RatingCheckError
+from exceptions.rating_check_exceptions import RatingCheckError
 from exceptions.boost_day_exceptions import BoostDayError
 from exceptions.song_sync_exceptions import SyncFailException
 from exceptions.team_draw_exceptions import TeamDrawError
