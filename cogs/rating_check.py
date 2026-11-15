@@ -93,11 +93,14 @@ class RatingCheckCog(commands.GroupCog, name="rating"):
 
         embed = info_embed(title="Rating 計算結果")
 
-        embed.add_field(name="偵測到的歌曲", value=f"{extracted_name}")
-        embed.add_field(name="偵測到的難度", value=f"{extracted_difficulty}")
+        embed.add_field(
+            name="偵測到的歌曲", 
+            value=f"{most_confident['title']} | {extracted_difficulty}", 
+            inline=False
+        )
         embed.add_field(name="偵測到的分數", value=f"{extracted_score:,}")
         embed.add_field(
-            name="預計定數", value=f"{most_confident['constant']:.2f}", inline=False
+            name="預計定數", value=f"{most_confident['constant']:.1f}", inline=False
         )
         embed.add_field(name="計算出的 Rating", value=f"{rating:.2f}", inline=False)
         embed.set_footer(
