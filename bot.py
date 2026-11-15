@@ -2,12 +2,15 @@ import logging
 import os
 
 import discord
-from discord.ext import commands
-
 from cogs.boost_day import add as boost_day_setup
+from cogs.rating_check import add as rating_check_setup
+from cogs.song_sync import add as song_sync_setup
 from cogs.team_draw import add as team_draw_setup
 from cogs.team_point import add as team_point_setup
+from discord.ext import commands
+from exceptions.rating_check_exceptions import RatingCheckError
 from exceptions.boost_day_exceptions import BoostDayError
+from exceptions.song_sync_exceptions import SyncFailException
 from exceptions.team_draw_exceptions import TeamDrawError
 from exceptions.team_point_exceptions import TeamPointError
 from utils.embed import error_embed
@@ -31,6 +34,8 @@ class ChunithmBot(commands.Bot):
         # Load cogs.
         await boost_day_setup(self)
         await team_point_setup(self)
+        await rating_check_setup(self)
+        await song_sync_setup(self)
         # await team_draw_setup(self)
 
         # Sync application (slash) commands on startup.
@@ -50,7 +55,16 @@ async def on_app_command_error(
     interaction: discord.Interaction, error: discord.app_commands.AppCommandError
 ):
     """Global error handler for app commands."""
-    if isinstance(error, (BoostDayError, TeamDrawError, TeamPointError)):
+    if isinstance(
+        error,
+        (
+            BoostDayError,
+            TeamDrawError,
+            TeamPointError,
+            RatingCheckError,
+            SyncFailException,
+        ),
+    ):
         return  # Handled in respective cogs
 
     logging.error(f"Unhandled app command error: {error}", exc_info=error)
