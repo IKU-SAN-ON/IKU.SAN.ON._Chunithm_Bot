@@ -2,10 +2,15 @@ import aiohttp
 import discord
 from discord import app_commands
 from discord.ext import commands
-from exceptions.rating_check_exceptions import RatingCheckError, WorldEndNotSupported
+from exceptions.rating_check_exceptions import (
+    ImageTooLarge,
+    RatingCheckError,
+    WorldEndNotSupported,
+)
 from services.extractor_service import extract_rating_from_image, search_constant
 from utils.calculate_rating import calculate_rating
 from utils.embed import error_embed, info_embed
+from utils.image_util import ImageProcessingError, prepare_image
 
 
 @app_commands.guild_install()
@@ -48,12 +53,19 @@ class RatingCheckCog(commands.GroupCog, name="rating"):
         await interaction.response.defer()
 
         # prepare payload for extractor API
+        try:
+            image_bytes, content_type, filename = prepare_image(
+                await image.read(), image.content_type, image.filename
+            )
+        except ImageProcessingError:
+            raise ImageTooLarge
+
         data = aiohttp.FormData()
         data.add_field(
             "image",
-            await image.read(),
-            filename=image.filename,
-            content_type=image.content_type,
+            image_bytes,
+            filename=filename,
+            content_type=content_type,
         )
         result = await extract_rating_from_image(data)
 

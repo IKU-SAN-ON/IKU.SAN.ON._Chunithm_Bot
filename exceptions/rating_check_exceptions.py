@@ -34,3 +34,10 @@ class WorldEndNotSupported(RatingCheckError):
     message: str = (
         "您是大佬！但是 World's End 的歌我們沒辦法計算Rating喔！請換一首歌試試看。"
     )
+
+
+class ImageTooLarge(RatingCheckError):
+    """Exception raised when the image size exceeds the limit."""
+
+    details: str = "The provided image exceeds the maximum allowed size."
+    message: str = "圖片太大了@@ 請上傳小於 15MB 的圖片。"
